@@ -1,0 +1,63 @@
+# === Python ===
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+
+# === Virtual Environments ===
+myenv/
+venv/
+.venv/
+env/
+
+# === Jupyter ===
+.ipynb_checkpoints/
+
+# === ML Models (large binary files – store via Git LFS or DVC) ===
+*.pth
+*.pt
+*.onnx
+*.model
+*.weights
+*.h5
+
+# === Environment Variables ===
+.env
+.env.*
+secrets.py
+
+# === macOS ===
+.DS_Store
+.AppleDouble
+.LSOverride
+*.localized
+
+# === IDE / Editor ===
+.vs/
+.vscode/
+.idea/
+*.code-workspace
+
+# === Logs ===
+*.log
+logs/
+
+# === Database ===
+*.db
+*.sqlite3
+
+# === Data ===
+data/raw/
+data/cache/
+
+# === Node (Frontend) ===
+node_modules/
+frontend/.next/
+frontend/dist/
+frontend/.env.local
