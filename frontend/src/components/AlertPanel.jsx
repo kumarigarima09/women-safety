@@ -1,90 +1,118 @@
 import React from 'react';
-import { AlertTriangle, Clock, MapPin, UserX, Hand } from 'lucide-react';
+
+// ── Icons ──────────────────────────────────────────────────
+const WeaponIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M14.5 17.5L3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M2 14l6 6"/><path d="M20 10l-1.5 1.5"/>
+  </svg>
+);
+
+const HandIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0"/><path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>
+  </svg>
+);
+
+const PersonIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+  </svg>
+);
+
+const PinIcon = () => (
+  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+  </svg>
+);
+
+const ClockIcon = () => (
+  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+  </svg>
+);
+
+function getAlertMeta(alert) {
+  if (alert.alerts?.weapon?.length) {
+    return {
+      type: 'weapon',
+      icon: <WeaponIcon />,
+      title: `WEAPON DETECTED — ${alert.alerts.weapon[0].type?.toUpperCase()}`,
+      detail: `Confidence: ${(alert.alerts.weapon[0].confidence * 100).toFixed(0)}%`,
+      severity: 'high',
+    };
+  }
+  if (alert.alerts?.sos_gesture?.length) {
+    return {
+      type: 'sos',
+      icon: <HandIcon />,
+      title: `SOS GESTURE — ${alert.alerts.sos_gesture[0].gesture?.replace(/_/g, ' ')}`,
+      detail: `Confidence: ${(alert.alerts.sos_gesture[0].confidence * 100).toFixed(0)}%`,
+      severity: 'high',
+    };
+  }
+  if (alert.alerts?.lone_woman?.length) {
+    return {
+      type: 'lone',
+      icon: <PersonIcon />,
+      title: 'LONE WOMAN — ISOLATED ZONE',
+      detail: `Distance: ${alert.alerts.lone_woman[0].distance?.toFixed(0)}px from nearest person`,
+      severity: 'med',
+    };
+  }
+  return { type: 'sos', icon: <HandIcon />, title: 'ANOMALY DETECTED', detail: '—', severity: 'med' };
+}
 
 export default function AlertPanel({ alerts }) {
-  if (!alerts || alerts.length === 0) {
+  if (!alerts?.length) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 text-slate-500">
-        <ShieldCheck className="w-12 h-12 mb-2 opacity-20" />
-        <p>No active alerts</p>
+      <div className="alert-feed">
+        <div className="alert-empty">
+          <div className="alert-empty-icon">🛡</div>
+          <div className="alert-empty-text">
+            NO ACTIVE THREATS<br />
+            <span style={{ color: 'var(--text-muted)', fontSize: 10 }}>System monitoring all zones</span>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-3">
-      {alerts.map((alert) => (
-        <AlertCard key={alert.id || alert.timestamp} alert={alert} />
-      ))}
-    </div>
-  );
-}
+    <div className="alert-feed">
+      {alerts.map((alert) => {
+        const meta = getAlertMeta(alert);
+        const time = new Date(alert.timestamp).toLocaleTimeString('en-IN', {
+          hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+        });
 
-// Just a dummy icon since lucide doesn't have ShieldCheck imported above
-const ShieldCheck = (props) => (
-  <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-  </svg>
-);
-
-function AlertCard({ alert }) {
-  const time = new Date(alert.timestamp).toLocaleTimeString();
-  
-  let title = "Unknown Alert";
-  let icon = <AlertTriangle />;
-  let colorClass = "border-slate-500 text-slate-500";
-  let bgClass = "bg-slate-800";
-  
-  if (alert.alerts?.weapon?.length > 0) {
-    title = `WEAPON DETECTED (${alert.alerts.weapon[0].type})`;
-    colorClass = "border-red-500 text-red-500";
-    bgClass = "bg-red-950/30";
-    icon = <AlertTriangle className="animate-pulse" />;
-  } else if (alert.alerts?.sos_gesture?.length > 0) {
-    title = `SOS GESTURE: ${alert.alerts.sos_gesture[0].gesture.replace(/_/g, ' ')}`;
-    colorClass = "border-orange-500 text-orange-500";
-    bgClass = "bg-orange-950/30";
-    icon = <Hand className="animate-pulse" />;
-  } else if (alert.alerts?.lone_woman?.length > 0) {
-    title = "ISOLATED WOMAN IN DARK ZONE";
-    colorClass = "border-yellow-500 text-yellow-500";
-    bgClass = "bg-yellow-950/30";
-    icon = <UserX />;
-  }
-
-  return (
-    <div className={`p-3 rounded border-l-4 ${colorClass} ${bgClass} shadow-md`}>
-      <div className="flex items-start gap-3">
-        <div className={`p-2 rounded-full bg-slate-900 ${colorClass.split(' ')[1]}`}>
-          {icon}
-        </div>
-        <div className="flex-1">
-          <h4 className="font-bold text-sm text-slate-200">{title}</h4>
-          
-          <div className="mt-2 flex flex-col gap-1 text-xs text-slate-400">
-            <div className="flex items-center gap-1">
-              <MapPin size={12} />
-              <span>Camera: <span className="text-slate-300 font-mono">{alert.camera_id}</span></span>
+        return (
+          <div key={alert.id} className={`alert-card ${meta.type}`}>
+            <div className="alert-card-header">
+              <span className="alert-card-icon">{meta.icon}</span>
+              <span className="alert-card-title">{meta.title}</span>
+              <span className={`severity-chip ${meta.severity}`}>
+                {meta.severity === 'high' ? 'HIGH' : 'MED'}
+              </span>
             </div>
-            <div className="flex items-center gap-1">
-              <Clock size={12} />
-              <span>{time}</span>
+
+            <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', marginBottom: 6, paddingLeft: 24 }}>
+              {meta.detail}
             </div>
+
+            <div className="alert-card-meta">
+              <span><PinIcon /> {alert.camera_id?.toUpperCase()}</span>
+              <span><ClockIcon /> {time}</span>
+            </div>
+
+            {meta.severity === 'high' && (
+              <div className="alert-card-actions">
+                <button className="action-btn dismiss">Dismiss</button>
+                <button className="action-btn dispatch">⚡ Dispatch Patrol</button>
+              </div>
+            )}
           </div>
-        </div>
-      </div>
-      
-      {/* If it's a high severity alert, we might want an action button */}
-      {alert.severity === 'HIGH' && (
-        <div className="mt-3 pt-2 border-t border-slate-700/50 flex justify-end gap-2">
-          <button className="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-xs rounded transition-colors">
-            Dismiss
-          </button>
-          <button className="px-3 py-1 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded transition-colors alert-pulse">
-            DISPATCH PATROL
-          </button>
-        </div>
-      )}
+        );
+      })}
     </div>
   );
 }

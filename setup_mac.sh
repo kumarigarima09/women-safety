@@ -20,7 +20,7 @@ fi
 
 # --- 2. System dependencies ---
 echo "[+] Installing system dependencies via Homebrew..."
-brew install ffmpeg postgresql@16 postgis python@3.11 || true
+brew install ffmpeg postgresql@16 python@3.11 || true
 
 # --- 3. Start PostgreSQL ---
 echo "[+] Starting PostgreSQL service..."
@@ -54,7 +54,7 @@ EOF
 echo ""
 echo "[+] Setting up PostgreSQL database..."
 createdb sih1605 2>/dev/null || echo "  Database 'sih1605' already exists, skipping."
-psql sih1605 -c "CREATE EXTENSION IF NOT EXISTS postgis;" 2>/dev/null || true
+
 
 # --- 8. Run DB schema ---
 echo "[+] Applying database schema..."

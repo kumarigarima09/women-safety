@@ -1,28 +1,43 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, AlertTriangle, Play, Square } from 'lucide-react';
 
-const WEBSOCKET_URL = "ws://localhost:8000/ws/stream";
+const WS_BASE = 'ws://localhost:8000/ws/stream';
 
-export default function LiveFeed({ onAlert }) {
-  const [cameras, setCameras] = useState([
-    { id: 'cam-01', name: 'Main Gate', url: '0', active: false },
-    { id: 'cam-02', name: 'Parking Lot', url: 'rtsp://mock', active: false },
-  ]);
+const CAMERAS = [
+  { id: 'cam-01', name: 'Main Gate',   url: '0',               isolated: false },
+  { id: 'cam-02', name: 'Parking Lot', url: 'rtsp://localhost', isolated: true  },
+  { id: 'cam-03', name: 'Back Alley',  url: 'rtsp://localhost', isolated: true  },
+  { id: 'cam-04', name: 'Stairwell',   url: 'rtsp://localhost', isolated: true  },
+];
+
+export default function LiveFeed({ onAlert, onCameraStatusChange }) {
+  const [activeCams, setActiveCams] = useState(new Set());
+
+  const toggle = (id, start) => {
+    setActiveCams(prev => {
+      const next = new Set(prev);
+      start ? next.add(id) : next.delete(id);
+      onCameraStatusChange?.(next.size);
+      return next;
+    });
+  };
 
   return (
-    <div className="p-4 h-full flex flex-col">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-bold flex items-center gap-2">
-          <Camera className="text-police-accent" /> Live Surveillance Feeds
-        </h2>
+    <div className="feed-panel fade-in">
+      <div className="panel-title">
+        <span>◉</span> Live Camera Grid
+        <div className="panel-title-line" />
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-muted)' }}>
+          {activeCams.size}/{CAMERAS.length} ACTIVE
+        </span>
       </div>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1">
-        {cameras.map(cam => (
-          <CameraStream 
-            key={cam.id} 
-            camera={cam} 
+
+      <div className="cam-grid">
+        {CAMERAS.map(cam => (
+          <CameraStream
+            key={cam.id}
+            camera={cam}
             onAlert={onAlert}
+            onStatusChange={(live) => toggle(cam.id, live)}
           />
         ))}
       </div>
@@ -30,92 +45,105 @@ export default function LiveFeed({ onAlert }) {
   );
 }
 
-function CameraStream({ camera, onAlert }) {
-  const [isPlaying, setIsPlaying] = useState(false);
+function CameraStream({ camera, onAlert, onStatusChange }) {
+  const [status, setStatus] = useState('offline'); // offline | connecting | live
   const [frameSrc, setFrameSrc] = useState(null);
-  const [status, setStatus] = useState('offline');
+  const [hasAlert, setHasAlert] = useState(false);
   const wsRef = useRef(null);
 
-  useEffect(() => {
-    return () => stopStream(); // cleanup on unmount
-  }, []);
+  useEffect(() => () => stopStream(), []);
 
   const startStream = () => {
     setStatus('connecting');
-    wsRef.current = new WebSocket(`${WEBSOCKET_URL}/${camera.id}`);
-    
+    wsRef.current = new WebSocket(`${WS_BASE}/${camera.id}`);
+
     wsRef.current.onopen = () => {
       setStatus('live');
-      setIsPlaying(true);
-      // Send config payload to backend
-      wsRef.current.send(JSON.stringify({ 
-        stream_url: camera.url,
-        is_isolated: false 
-      }));
+      onStatusChange?.(true);
+      wsRef.current.send(JSON.stringify({ stream_url: camera.url, is_isolated: camera.isolated }));
     };
 
-    wsRef.current.onmessage = (event) => {
+    wsRef.current.onmessage = (evt) => {
       try {
-        const data = JSON.parse(event.data);
-        if (data.frame) {
-          setFrameSrc(`data:image/jpeg;base64,${data.frame}`);
-        }
+        const data = JSON.parse(evt.data);
+        if (data.frame) setFrameSrc(`data:image/jpeg;base64,${data.frame}`);
         if (data.has_alert) {
-          onAlert(data);
+          setHasAlert(true);
+          onAlert?.(data);
+          setTimeout(() => setHasAlert(false), 3000);
         }
-      } catch (err) {
-        console.error("Frame decode error", err);
-      }
+      } catch {}
     };
 
     wsRef.current.onclose = () => {
       setStatus('offline');
-      setIsPlaying(false);
       setFrameSrc(null);
+      setHasAlert(false);
+      onStatusChange?.(false);
     };
+
+    wsRef.current.onerror = () => setStatus('offline');
   };
 
   const stopStream = () => {
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
-    }
+    wsRef.current?.close();
+    wsRef.current = null;
     setStatus('offline');
-    setIsPlaying(false);
     setFrameSrc(null);
+    setHasAlert(false);
+    onStatusChange?.(false);
   };
 
   return (
-    <div className="bg-slate-900 rounded-lg overflow-hidden border border-slate-700 relative flex flex-col group">
+    <div className={`cam-card ${hasAlert ? 'alert-active' : ''}`}>
       {/* Video Area */}
-      <div className="flex-1 relative bg-black flex items-center justify-center min-h-[300px]">
+      <div className="cam-video-area">
         {frameSrc ? (
-          <img src={frameSrc} alt={`${camera.name} feed`} className="w-full h-full object-contain" />
+          <img src={frameSrc} alt={`${camera.name} feed`} />
         ) : (
-          <div className="text-slate-600 flex flex-col items-center">
-            <Camera size={48} className="mb-2 opacity-50" />
-            <span>{status === 'connecting' ? 'Connecting...' : 'Feed Offline'}</span>
+          <div className="cam-offline-state">
+            <div className="cam-offline-icon">
+              {status === 'connecting' ? '⟳' : '⬛'}
+            </div>
+            <div className="cam-offline-text">
+              {status === 'connecting' ? 'ACQUIRING SIGNAL...' : 'FEED OFFLINE'}
+            </div>
           </div>
         )}
-        
-        {/* Status indicator overlay */}
-        <div className="absolute top-3 left-3 flex items-center gap-2 bg-black/60 px-2 py-1 rounded backdrop-blur-sm">
-          <span className={`h-2 w-2 rounded-full ${status === 'live' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
-          <span className="text-xs font-mono font-semibold uppercase">{camera.name}</span>
+
+        {/* Corner brackets */}
+        <div className="cam-corner tl" />
+        <div className="cam-corner tr" />
+        <div className="cam-corner bl" />
+        <div className="cam-corner br" />
+
+        {/* Top overlay */}
+        <div className="cam-overlay-top">
+          <div className={`cam-status-dot ${status}`} />
+          <span className="cam-label">{camera.name}</span>
+          {camera.isolated && (
+            <span style={{ fontSize: 8, color: 'var(--warning)', fontFamily: 'var(--font-mono)', letterSpacing: '0.06em' }}>
+              ⚠ ISOLATED
+            </span>
+          )}
         </div>
+
+        {/* Alert tag */}
+        {hasAlert && (
+          <div className="cam-overlay-bottom">
+            <span className="alert-tag">⚡ THREAT DETECTED</span>
+          </div>
+        )}
       </div>
 
-      {/* Controls Area */}
-      <div className="bg-slate-800 p-2 flex justify-between items-center border-t border-slate-700 opacity-0 group-hover:opacity-100 transition-opacity absolute bottom-0 w-full">
-        <span className="text-xs font-mono text-slate-400">{camera.id} | {camera.url}</span>
-        <button 
-          onClick={isPlaying ? stopStream : startStream}
-          className={`flex items-center gap-1 px-3 py-1 rounded text-sm font-semibold transition-colors ${
-            isPlaying ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30' : 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
-          }`}
-        >
-          {isPlaying ? <><Square size={14} /> Stop</> : <><Play size={14} /> Start</>}
-        </button>
+      {/* Footer */}
+      <div className="cam-footer">
+        <span className="cam-id">{camera.id.toUpperCase()} · {camera.url === '0' ? 'WEBCAM' : 'RTSP'}</span>
+        {status === 'live' ? (
+          <button className="cam-ctrl-btn stop" onClick={stopStream}>■ STOP</button>
+        ) : (
+          <button className="cam-ctrl-btn start" onClick={startStream}>▶ START</button>
+        )}
       </div>
     </div>
   );

@@ -1,7 +1,6 @@
 -- backend/database/schema.sql
 -- Run: psql sih1605 -f backend/database/schema.sql
-
-CREATE EXTENSION IF NOT EXISTS postgis;
+-- NOTE: Uses plain DOUBLE PRECISION for lat/lng (no PostGIS required)
 
 -- ── Camera registry ──────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS cameras (
@@ -22,7 +21,8 @@ CREATE TABLE IF NOT EXISTS alerts (
     alert_type    TEXT NOT NULL,       -- 'LONE_WOMAN' | 'SOS_GESTURE' | 'WEAPON'
     severity      TEXT NOT NULL,       -- 'HIGH' | 'MEDIUM'
     details       JSONB,
-    location      GEOGRAPHY(POINT, 4326),
+    latitude      DOUBLE PRECISION,
+    longitude     DOUBLE PRECISION,
     reviewed      BOOLEAN DEFAULT FALSE,
     created_at    TIMESTAMPTZ DEFAULT NOW()
 );
@@ -31,15 +31,14 @@ CREATE INDEX IF NOT EXISTS idx_alerts_created ON alerts (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_alerts_type    ON alerts (alert_type);
 CREATE INDEX IF NOT EXISTS idx_alerts_camera  ON alerts (camera_id);
 
--- ── Hotspot aggregation (materialised view refreshed by cron) ─────────────────
+-- ── Hotspot aggregation ───────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS hotspots (
     id            SERIAL PRIMARY KEY,
     latitude      DOUBLE PRECISION NOT NULL,
     longitude     DOUBLE PRECISION NOT NULL,
     risk_score    FLOAT NOT NULL,
     alert_count   INT NOT NULL,
-    last_seen     TIMESTAMPTZ,
-    location      GEOGRAPHY(POINT, 4326)
+    last_seen     TIMESTAMPTZ
 );
 
 -- ── Seed default cameras (update stream_url for real CCTV or Mac webcam) ──────

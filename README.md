@@ -42,7 +42,7 @@ sih1605-women-safety/
 │   └── database/
 │       ├── connection.py         # SQLAlchemy + .env config
 │       ├── models.py             # ORM models (Camera, Alert, Hotspot)
-│       └── schema.sql            # PostgreSQL + PostGIS schema
+│       └── schema.sql            # PostgreSQL schema
 ├── frontend/                     # React + Vite dashboard
 │   └── src/components/
 │       ├── LiveFeed.jsx           # Multi-camera video grid
@@ -82,7 +82,7 @@ chmod +x setup_mac.sh
 ./setup_mac.sh
 ```
 This will:
-- Install `ffmpeg`, `postgresql`, and `postgis` via Homebrew
+- Install `ffmpeg` and `postgresql` via Homebrew
 - Create a Python virtualenv and install all dependencies
 - Verify PyTorch MPS (Apple GPU) support
 - Create and seed the `sih1605` PostgreSQL database
