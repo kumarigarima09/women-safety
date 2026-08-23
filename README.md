@@ -72,8 +72,8 @@ sih1605-women-safety/
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/YOUR_USERNAME/sih1605-women-safety.git
-cd sih1605-women-safety
+git clone https://github.com/kumarigarima09/sih1605-women-safety-analytics.git
+cd sih1605-women-safety-analytics
 ```
 
 ### 2. Run the one-shot setup script
