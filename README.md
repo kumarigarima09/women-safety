@@ -210,7 +210,7 @@ CCTV / Webcam Feed
 
 ## 📄 License
 
-This project was developed for SIH 2024 (Non-commercial, academic use).
+This project was developed for SIH 2024 (Non-commercial, academic use)
 
 ---
 
